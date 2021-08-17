@@ -1,2 +1,2 @@
-# Se-ales_y_Sistemas
+# SyS
 Repositorio del curso Señales y Sistemas
