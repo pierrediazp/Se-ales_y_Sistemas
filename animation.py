@@ -6,9 +6,8 @@ from matplotlib.collections import LineCollection, PolyCollection
 import sympy as sym
 
 
-def animate_convolution(x, h, y, t, tau, td, taud, interval=500):
+def animate_convolution(x, h, y, t, tau, td, taud, interval=75):
     """Plot animation of graphical representation of linear convolution.
-
     Parameters
     ----------
     x : sympy function
@@ -28,8 +27,10 @@ def animate_convolution(x, h, y, t, tau, td, taud, interval=500):
     Returns
     -------
     matplotlib.animation.FuncAnimation object.
-
     """
+    def my_heaviside(x):
+        return np.heaviside(x,1/2)
+    
     def animate(ti):
         p = sym.plot(x.subs(t, tau), (tau, taud[0], taud[-1]), show=False)
         line_x.set_segments(p[0].get_segments())
@@ -38,17 +39,25 @@ def animate_convolution(x, h, y, t, tau, td, taud, interval=500):
                      show=False)
         line_h.set_segments(p[0].get_segments())
 
-        p = sym.plot(y, (t, taud[0], taud[-1]), show=False,xlim=[td[0],td[-1]])
+        p = sym.plot(y, (t, taud[0], taud[-1]), show=False)
         line_y.set_segments(p[0].get_segments())
 
-        p = sym.plot(x.subs(t, tau)*h.subs(t, ti - tau), (tau, -5, 5),
-                     show=False,xlim=[td[0],td[-1]])
-        points = p[0].get_points()
-        verts = [[(xi[0], xi[1]) for xi in np.transpose(np.array(points))]]
+        p = sym.plot(x.subs(t, tau) * h.subs(t, ti - tau), (tau, -5, 5),
+                     show=False)
+        
+        # see https://github.com/sympy/sympy/issues/21392
+        #points = np.array(p[0].get_points())
+        # alternative via lambdify
+        func = sym.lambdify(tau, x.subs(t, tau) * h.subs(t, ti - tau), modules=['numpy', {'Heaviside':my_heaviside}])
+        tt = np.linspace(-5,5,100)
+        points = np.vstack((tt, np.asarray(func(tt))))
+        
+        verts = [[(xi[0], xi[1]) for xi in points.T]]
         fill.set_verts(verts)
-
+        
         dot.set_data(ti, y.subs(t, ti))
 
+    
     # define line/fill collections and setup plot
     default_figsize = plt.rcParams.get('figure.figsize')
     fig, ax = plt.subplots(2, 1, figsize=(default_figsize[0],
@@ -81,8 +90,8 @@ def animate_convolution(x, h, y, t, tau, td, taud, interval=500):
         axi.spines['top'].set_color('none')
         axi.xaxis.set_ticks_position('bottom')
         axi.yaxis.set_ticks_position('left')
-        axi.set_xlim(-4,4)
-        #axi.set_ylim((-.1, 1.2))
+        axi.set_xlim((-td[0], td[-1]))
+        axi.set_ylim((-.1, 1.0))    
 
     ax[0].set_xlabel(r'$\tau$', horizontalalignment='right', x=1.0)
     ax[0].legend(loc='upper right')
